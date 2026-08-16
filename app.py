@@ -8,7 +8,7 @@ from query import answer_question
 
 st.set_page_config(page_title="RAG Document Q&A", page_icon="📄", layout="wide")
 
-st.title("📄 RAG Document Q&A")
+st.title(" RAG Document Q&A")
 st.caption("Ask questions grounded in your own documents — runs 100% locally, free.")
 
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -16,11 +16,20 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # ---- Sidebar: upload + ingest ----
 with st.sidebar:
     st.header("1. Add documents")
+    clear_old = st.checkbox(
+        "Replace existing documents with this upload",
+        value=True,
+        help="If checked, old PDFs are removed so only your latest upload(s) are searchable.",
+    )
     uploaded_files = st.file_uploader(
         "Upload PDFs", type=["pdf"], accept_multiple_files=True
     )
 
     if uploaded_files:
+        if clear_old:
+            for old_f in os.listdir(DATA_DIR):
+                if old_f.endswith(".pdf"):
+                    os.remove(os.path.join(DATA_DIR, old_f))
         for f in uploaded_files:
             save_path = os.path.join(DATA_DIR, f.name)
             with open(save_path, "wb") as out:

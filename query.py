@@ -1,11 +1,9 @@
 import sys
 import chromadb
 from chromadb.utils import embedding_functions
-import requests
+from llm import simple_completion
 
 CHROMA_DIR = "chroma_db"
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2"   # run `ollama pull llama3.2` first
 
 
 def get_collection():
@@ -44,16 +42,6 @@ Answer:"""
     return prompt
 
 
-def ask_ollama(prompt, model=OLLAMA_MODEL):
-    response = requests.post(
-        OLLAMA_URL,
-        json={"model": model, "prompt": prompt, "stream": False},
-        timeout=120,
-    )
-    response.raise_for_status()
-    return response.json()["response"]
-
-
 def answer_question(query, n_results=4, verbose=True):
     retrieved = retrieve(query, n_results=n_results)
 
@@ -67,7 +55,7 @@ def answer_question(query, n_results=4, verbose=True):
         print("------------------------\n")
 
     prompt = build_prompt(query, retrieved)
-    answer = ask_ollama(prompt)
+    answer = simple_completion(prompt)
     sources = [meta["source"] for _, meta in retrieved]
     return answer, sources
 

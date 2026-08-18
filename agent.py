@@ -1,10 +1,7 @@
 import json
 import sys
-import requests
 from tools import TOOL_SCHEMAS, TOOL_FUNCTIONS
-
-OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "llama3.2"   # must be a tool-calling capable model
+from llm import chat_completion
 
 SYSTEM_PROMPT = """You are a helpful research assistant with access to tools.
 - Use search_documents for questions about the user's uploaded PDFs.
@@ -15,19 +12,19 @@ confidently, just answer directly. Always explain your final answer clearly."""
 
 
 def call_ollama(messages, tools=None):
-    payload = {
-        "model": OLLAMA_MODEL,
-        "messages": messages,
-        "stream": False,
-    }
-    if tools:
-        payload["tools"] = tools
-    response = requests.post(OLLAMA_CHAT_URL, json=payload, timeout=120)
-    response.raise_for_status()
-    return response.json()
+    """Kept for backward compatibility; delegates to the shared llm module
+    which auto-switches between local Ollama and hosted Groq."""
+    return chat_completion(messages, tools=tools)
 
 
 def run_agent(user_query, max_steps=5, verbose=True):
+    """
+    Runs the agent loop:
+      1. Ask the model what to do (answer directly, or call a tool)
+      2. If it calls a tool, execute it and feed the result back
+      3. Repeat until the model gives a final answer or max_steps is hit
+    Returns (final_answer, trace) where trace is a list of steps taken.
+    """
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user_query},
@@ -41,12 +38,14 @@ def run_agent(user_query, max_steps=5, verbose=True):
         tool_calls = message.get("tool_calls")
 
         if not tool_calls:
+            # model gave a final answer, no more tools needed
             final_answer = message.get("content", "").strip()
             trace.append({"type": "final_answer", "content": final_answer})
             if verbose:
                 print(f"\n[Final answer after {step + 1} step(s)]")
             return final_answer, trace
 
+        # model wants to call one or more tools
         messages.append(message)
 
         for call in tool_calls:
@@ -80,6 +79,7 @@ def run_agent(user_query, max_steps=5, verbose=True):
                 }
             )
 
+    # ran out of steps
     final_answer = "I wasn't able to fully resolve this within the step limit."
     trace.append({"type": "final_answer", "content": final_answer})
     return final_answer, trace

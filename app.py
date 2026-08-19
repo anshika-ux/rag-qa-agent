@@ -1339,36 +1339,50 @@ label {
 
 
 /* ============================================================
-   SEND BUTTON
+   CHAT INPUT (replaces old form + text_input + submit button)
 ============================================================ */
 
 .st-key-composer
-[data-testid="stFormSubmitButton"]
-button {
+[data-testid="stChatInput"] {
 
-    width:
-        42px !important;
+    background:
+        transparent !important;
 
-    min-width:
-        42px !important;
+    border:
+        none !important;
+}
 
-    height:
-        42px !important;
 
-    min-height:
-        42px !important;
+.st-key-composer
+[data-testid="stChatInput"]
+textarea {
 
-    padding:
-        0 !important;
-
-    flex-shrink:
-        0 !important;
+    background:
+        transparent !important;
 
     border:
         none !important;
 
-    border-radius:
-        50% !important;
+    color:
+        var(--text) !important;
+
+    font-size:
+        .93rem !important;
+}
+
+
+.st-key-composer
+[data-testid="stChatInput"]
+textarea::placeholder {
+
+    color:
+        var(--muted-2) !important;
+}
+
+
+.st-key-composer
+[data-testid="stChatInput"]
+button {
 
     background:
         linear-gradient(
@@ -1377,43 +1391,19 @@ button {
             #0891B2
         ) !important;
 
-    color:
-        transparent !important;
-
-    font-size:
-        0 !important;
+    border-radius:
+        50% !important;
 
     box-shadow:
         0 5px 18px rgba(20,184,166,.18);
+
+    transition:
+        all .18s ease !important;
 }
 
 
 .st-key-composer
-[data-testid="stFormSubmitButton"]
-button::before {
-
-    content:
-        "arrow_upward";
-
-    font-family:
-        'Material Symbols Outlined';
-
-    font-size:
-        20px;
-
-    color:
-        white;
-
-    font-variation-settings:
-        'FILL' 1,
-        'wght' 500,
-        'GRAD' 0,
-        'opsz' 24;
-}
-
-
-.st-key-composer
-[data-testid="stFormSubmitButton"]
+[data-testid="stChatInput"]
 button:hover {
 
     transform:
@@ -1425,7 +1415,7 @@ button:hover {
 
 
 .st-key-composer
-[data-testid="stFormSubmitButton"]
+[data-testid="stChatInput"]
 button:disabled {
 
     background:
@@ -2152,114 +2142,89 @@ with st.container(
 
 
     # --------------------------------------------------------
-    # COMPOSER FORM
+    # ATTACH (outside any form so uploads process immediately,
+    # instead of waiting for the next form submission)
     # --------------------------------------------------------
 
-    with st.form(
-        "message_form",
-        clear_on_submit=True,
-        border=False,
-    ):
+    attach_col, input_col = st.columns(
+        [0.07, 0.93],
+        gap="small",
+        vertical_alignment="center",
+    )
 
-        attach_col, input_col, send_col = st.columns(
-            [0.07, 0.83, 0.10],
-            gap="small",
-            vertical_alignment="center",
-        )
+    with attach_col:
 
+        with st.popover(
+            "📎",
+            help="Attach PDF",
+        ):
 
-        # ----------------------------------------------------
-        # ATTACH
-        # ----------------------------------------------------
+            st.markdown(
+                "### Add documents"
+            )
 
-        with attach_col:
+            st.caption(
+                "Upload one or more PDF files."
+            )
 
-            with st.popover(
-                "📎",
-                help="Attach PDF",
+            st.checkbox(
+                "Replace previous files",
+                key="clear_old",
+            )
+
+            bar_upload = st.file_uploader(
+                "Choose PDF",
+                type=["pdf"],
+                accept_multiple_files=True,
+                key="bar_uploader",
+                label_visibility="collapsed",
+            )
+
+            upload_status = handle_upload(
+                bar_upload,
+                clear_old=st.session_state.get(
+                    "clear_old",
+                    True,
+                ),
+            )
+
+            if (
+                upload_status
+                and upload_status.startswith(
+                    "indexed:"
+                )
             ):
 
-                st.markdown(
-                    "### Add documents"
+                n = upload_status.split(
+                    ":"
+                )[1]
+
+                st.success(
+                    f"{n} file"
+                    f"{'s' if n != '1' else ''}"
+                    " ready"
                 )
 
-                st.caption(
-                    "Upload one or more PDF files."
+                st.rerun()
+
+            elif upload_status == "empty":
+
+                st.warning(
+                    "Couldn't read that PDF."
                 )
 
-                st.checkbox(
-                    "Replace previous files",
-                    key="clear_old",
-                )
+    # --------------------------------------------------------
+    # INPUT (native chat_input: handles Enter-to-send on its own,
+    # no form needed, so uploads above are never trapped waiting
+    # for a submit event)
+    # --------------------------------------------------------
 
-                bar_upload = st.file_uploader(
-                    "Choose PDF",
-                    type=["pdf"],
-                    accept_multiple_files=True,
-                    key="bar_uploader",
-                    label_visibility="collapsed",
-                )
+    with input_col:
 
-                upload_status = handle_upload(
-                    bar_upload,
-                    clear_old=st.session_state.get(
-                        "clear_old",
-                        True,
-                    ),
-                )
-
-                if (
-                    upload_status
-                    and upload_status.startswith(
-                        "indexed:"
-                    )
-                ):
-
-                    n = upload_status.split(
-                        ":"
-                    )[1]
-
-                    st.success(
-                        f"{n} file"
-                        f"{'s' if n != '1' else ''}"
-                        " ready"
-                    )
-
-                    st.rerun()
-
-                elif upload_status == "empty":
-
-                    st.warning(
-                        "Couldn't read that PDF."
-                    )
-
-
-        # ----------------------------------------------------
-        # INPUT
-        # ----------------------------------------------------
-
-        with input_col:
-
-            user_text = st.text_input(
-                "message",
-                placeholder=(
-                    "Ask anything about your documents..."
-                ),
-                label_visibility="collapsed",
-                key="message_input",
-            )
-
-
-        # ----------------------------------------------------
-        # SEND
-        # ----------------------------------------------------
-
-        with send_col:
-
-            submitted = st.form_submit_button(
-                "Send",
-                use_container_width=True,
-            )
+        chat_submission = st.chat_input(
+            "Ask anything about your documents...",
+            key="message_input",
+        )
 
 
 # ============================================================
@@ -2269,12 +2234,11 @@ with st.container(
 question = st.session_state.pending_question
 
 
-if submitted and user_text.strip():
+if chat_submission and chat_submission.strip():
 
-    question = user_text.strip()
+    question = chat_submission.strip()
 
     st.session_state.pending_question = None
-
 
 elif question:
 
@@ -2290,7 +2254,9 @@ existing = list_pdfs()
 
 if question:
 
-    if not existing:
+    needs_pdf = not st.session_state.get("agent_toggle", True)
+
+    if needs_pdf and not existing:
 
         st.toast(
             "Attach a PDF first using the 📎 button."

@@ -19,6 +19,9 @@ def get_collection():
 def retrieve(query, n_results=4):
     """Return top-n relevant chunks for a query, with their sources."""
     collection = get_collection()
+    if collection.count() == 0:
+        return []
+    n_results = min(n_results, collection.count())
     results = collection.query(query_texts=[query], n_results=n_results)
     chunks = results["documents"][0]
     metadatas = results["metadatas"][0]
